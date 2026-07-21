@@ -1,0 +1,12 @@
+data/
+
+data/train_triplets.txt
+data/mxm_dataset_train.txt
+data/p02_unique_tracks.txt
+
+# notebooks checkpoints
+.ipynb_checkpoints/
+
+# python
+__pycache__/
+*.pyc
