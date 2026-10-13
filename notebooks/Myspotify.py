@@ -246,76 +246,120 @@ class MySpotify:
 
     def fit_user_model(self):
 
-        self.user_model = NearestNeighbors(
+        self.model = NearestNeighbors(
             metric="cosine",
             algorithm="brute",
             n_neighbors=11
         )
 
-        self.user_model.fit(self.user_item_matrix)
+        self.model.fit(self.user_item_matrix)
 
-    def similar_users(self, user_id):
+    def similar_users(self, user_id, n_neighbors=10):
+        """
+        Return the most similar users and their similarity scores.
+        """
+
+        if user_id not in self.user_encoder.classes_:
+            raise ValueError("Unknown user")
 
         user_index = self.user_encoder.transform([user_id])[0]
 
-        distances, indices = self.user_model.kneighbors(
+        distances, indices = self.model.kneighbors(
             self.user_item_matrix[user_index],
-            n_neighbors=11
+            n_neighbors=n_neighbors + 1
         )
 
-        users = self.user_encoder.inverse_transform(indices[0])
+        users = self.user_encoder.inverse_transform(indices[0][1:])
+        similarities = 1 - distances[0][1:]
 
-        return users[1:]
+        return users, similarities
 
     
     def recommend_for_user(self, user_id, n_recommendations=10):
-        """
-        Recommend songs to a user using User-Based Collaborative Filtering.
-        """
 
-        # Similar users
-        similar = self.similar_users(user_id)
+        similar_users, similarities = self.similar_users(user_id)
 
-        # Songs already listened to by the target user
         listened = set(
-            self.songs[
-                self.songs["user_id"] == user_id
+            self.train_data[
+                self.train_data["user_id"] == user_id
             ]["song_id"]
         )
 
-        # Songs listened to by similar users
-        recommendations = (
-            self.songs[
-                self.songs["user_id"].isin(similar)
-            ]
-            .groupby("song_id")["play_count"]
-            .sum()
-            .reset_index()
-            .rename(columns={"play_count": "score"})
-        )
+        scores = {}
 
-        # Remove songs the user already knows
-        recommendations = recommendations[
-            ~recommendations["song_id"].isin(listened)
-        ]
+        for neighbor, similarity in zip(similar_users, similarities):
 
-        # Add artist and title
-        metadata = (
-            self.songs[
-                ["song_id", "artist", "title"]
+            neighbor_songs = self.train_data[
+                self.train_data["user_id"] == neighbor
             ]
-            .drop_duplicates()
-        )
+
+            for _, row in neighbor_songs.iterrows():
+
+                song = row["song_id"]
+
+                if song in listened:
+                    continue
+
+                score = similarity * row["play_count"]
+
+                scores[song] = scores.get(song, 0) + score
 
         recommendations = (
-            recommendations
-            .merge(metadata, on="song_id", how="left")
+            pd.DataFrame(
+                scores.items(),
+                columns=["song_id", "score"]
+            )
             .sort_values("score", ascending=False)
             .head(n_recommendations)
-            [["artist", "title", "score"]]
-            .reset_index(drop=True)
         )
 
-        recommendations.index += 1
+        recommendations = recommendations.merge(
+            self.metadata,
+            on="song_id",
+            how="left"
+        )
 
-        return recommendations
+        return recommendations[
+            ["song_id", "artist", "title", "score"]
+        ]
+
+
+        
+    def precision_at_k(self, k=10, sample_size=100):
+
+        users = (
+            self.test_data["user_id"]
+            .drop_duplicates()
+            .sample(
+                min(sample_size,
+                    self.test_data["user_id"].nunique()),
+                random_state=42
+            )
+        )
+
+        precisions = []
+
+        for user in users:
+
+            recommendations = self.recommend_for_user(
+                user,
+                n_recommendations=k
+            )
+
+            recommended = set(recommendations["song_id"])
+
+            relevant = set(
+                self.test_data[
+                    self.test_data["user_id"] == user
+                ]["song_id"]
+            )
+
+            hits = len(recommended & relevant)
+
+            precisions.append(hits / k)
+
+        average = np.mean(precisions)
+
+        print(f"Precision@{k}: {average:.4f}")
+
+        return average
