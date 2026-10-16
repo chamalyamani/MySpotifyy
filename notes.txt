@@ -1,0 +1,15 @@
+Ce projet met en œuvre un système de recommandation musicale à partir du jeu de données Million Song Dataset.
+
+Le pipeline charge les écoutes, les métadonnées des morceaux, les genres et les paroles. 
+Il produit ensuite les 250 morceaux les plus écoutés, les classements par genre et cinq 
+collections thématiques à partir des paroles. Enfin, il utilise le filtrage collaboratif 
+pour recommander des morceaux à un utilisateur selon les écoutes 
+de personnes similaires, et des morceaux associés à un titre donné.
+
+
+On a d’abord relié les écoutes aux métadonnées pour calculer la popularité des morceaux et les classements par genre. Pour les collections, on a analysé les paroles musiXmatch et compté les mots associés à chaque thème.
+
+Pour les recommandations, on a construit une matrice creuse utilisateurs-morceaux à 
+partir des historiques d’écoute, puis comparé les profils avec une similarité cosinus. 
+Les morceaux écoutés par des utilisateurs proches, ou associés à un morceau donné, 
+servent ensuite à générer les recommandations.

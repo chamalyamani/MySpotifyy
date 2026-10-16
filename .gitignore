@@ -1,9 +1,11 @@
 data/
-
+.venv
 data/train_triplets.txt
 data/mxm_dataset_train.txt
 data/p02_unique_tracks.txt
-
+data/Top_250_tracks.csv
+data/p02_msd_tagtraum_cd2.cls
+data/module00.pdf
 # notebooks checkpoints
 .ipynb_checkpoints/
 

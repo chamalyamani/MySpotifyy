@@ -10,7 +10,9 @@
  "language": "python",
  "metadata": {
   "debugger": true,
-  "supported_encryption": "curve"
+  "supported_encryption": [
+   "curve"
+  ]
  },
  "kernel_protocol_version": "5.5"
 }
